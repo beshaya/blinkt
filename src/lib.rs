@@ -266,7 +266,7 @@ impl SerialOutput for BlinktSpi {
     // Queues bytes for transmission. Data is sent only when 4096 bytes are buffered or flush() is called.
     fn write(&mut self, data: &[u8]) -> Result<()> {
         for val in data {
-            self.buffer[self.index] = val;
+            self.buffer[self.index] = *val;
             self.index += 1;
             if self.index >= SPI_BUFFER_BYTES {
                 self.flush()?;
