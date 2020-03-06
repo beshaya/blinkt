@@ -127,6 +127,9 @@ const NUM_PIXELS: usize = 8;
 
 const DEFAULT_BRIGHTNESS: u8 = 7;
 
+// Maximum transmission size of rppal::spi by default.
+const SPI_BUFFER_BYTES: usize = 4096;
+
 quick_error! {
     #[derive(Debug)]
 /// Errors that can occur while using Blinkt.
@@ -182,6 +185,7 @@ impl Default for Pixel {
 
 trait SerialOutput {
     fn cleanup(&mut self);
+    fn flush(&mut self) -> Result<()>;
     fn write(&mut self, data: &[u8]) -> Result<()>;
 }
 
@@ -229,10 +233,16 @@ impl SerialOutput for BlinktGpio {
 
         Ok(())
     }
+
+    fn flush(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 struct BlinktSpi {
     spi: spi::Spi,
+    buffer: [u8; SPI_BUFFER_BYTES],
+    index: usize,
 }
 
 impl BlinktSpi {
@@ -244,6 +254,8 @@ impl BlinktSpi {
                 clock_speed_hz,
                 spi::Mode::Mode0,
             )?,
+            buffer: [0; SPI_BUFFER_BYTES];
+            index: 0,
         })
     }
 }
@@ -251,12 +263,25 @@ impl BlinktSpi {
 impl SerialOutput for BlinktSpi {
     fn cleanup(&mut self) {}
 
+    // Queues bytes for transmission. Data is sent only when 4096 bytes are buffered or flush() is called.
     fn write(&mut self, data: &[u8]) -> Result<()> {
-        self.spi.write(data)?;
+        for val in data {
+            self.buffer[index] = val;
+            self.index += 1;
+            if self.index >= SPI_BUFFER_BYTES {
+                self.flush()?;
+            }
+        }
+        Ok(())
+    }
 
+    fn flush(&mut self) -> Result<()> {
+        self.spi.write(&self.buffer[0 .. self.index])?;
+        self.index = 0;
         Ok(())
     }
 }
+
 
 /// Interface for the Pimoroni Blinkt!, and any similar APA102 or SK9822 LED
 /// strips or boards.
@@ -429,7 +454,7 @@ impl Blinkt {
         // instead of ones as the end frame. This workaround is
         // compatible with both the APA102 and SK9822.
         self.serial_output.write(&self.end_frame)?;
-
+        self.serial_output.flush()?;
         Ok(())
     }
 }
