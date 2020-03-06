@@ -9,7 +9,8 @@ use blinkt::Blinkt;
 
 fn main() {
     let mut rng = rand::thread_rng();
-    let mut blinkt = Blinkt::new().unwrap();
+    let pixels = 100;
+    let mut blinkt = Blinkt::with_spi(8_000_000, pixels).unwrap();
 
     blinkt.set_all_pixels_brightness(0.1);
 
