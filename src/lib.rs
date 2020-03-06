@@ -254,7 +254,7 @@ impl BlinktSpi {
                 clock_speed_hz,
                 spi::Mode::Mode0,
             )?,
-            buffer: [0; SPI_BUFFER_BYTES];
+            buffer: [0; SPI_BUFFER_BYTES],
             index: 0,
         })
     }
@@ -266,7 +266,7 @@ impl SerialOutput for BlinktSpi {
     // Queues bytes for transmission. Data is sent only when 4096 bytes are buffered or flush() is called.
     fn write(&mut self, data: &[u8]) -> Result<()> {
         for val in data {
-            self.buffer[index] = val;
+            self.buffer[self.index] = val;
             self.index += 1;
             if self.index >= SPI_BUFFER_BYTES {
                 self.flush()?;
@@ -290,7 +290,7 @@ impl SerialOutput for BlinktSpi {
 /// data pin GPIO 23 (physical pin 16) and clock pin GPIO 24 (physical pin 18).
 /// These settings can be changed to support alternate configurations.
 pub struct Blinkt {
-    serial_output: Box<SerialOutput>,
+    serial_output: Box<dyn SerialOutput>,
     pixels: Vec<Pixel>,
     clear_on_drop: bool,
     end_frame: Vec<u8>,
